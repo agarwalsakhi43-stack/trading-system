@@ -1,0 +1,15 @@
+# Secrets — never commit
+telegram_config.sh
+
+# Generated/frequently-changing data files, not source
+bank_metrics.json
+approved_stocks.json
+fix_sector_progress.json
+
+# Logs and reference data dumps
+logs/
+EQUITY_L.csv
+
+# Standard hygiene
+node_modules/
+.DS_Store

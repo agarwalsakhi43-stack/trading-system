@@ -1,0 +1,192 @@
+{
+  "framework": "REFINED",
+  "description": "Fundamental analysis framework for stock selection. Always use Consolidated figures on Screener.in. All checks cover the last 5 years.",
+  "data_source": "Screener.in — Consolidated Financials",
+  "stock_universe": {
+    "indices": ["Nifty 50", "Nifty 100", "Nifty 200"],
+    "minimum_price_inr": 500,
+    "note": "Only consider stocks priced above ₹500. Screen from Nifty 50 first, then expand to Nifty 100 and Nifty 200."
+  },
+  "criteria": [
+    {
+      "id": "R",
+      "name": "ROCE — Return on Capital Employed",
+      "full_form": "R = ROCE",
+      "formula": "PBIT / Capital Employed × 100",
+      "where": "Capital Employed = Total Assets − Current Liabilities",
+      "lookup_on_screener": "Key Metrics → ROCE (%)",
+      "years_to_check": 5,
+      "threshold": {
+        "minimum": 15,
+        "unit": "percent",
+        "condition": "greater_than",
+        "consistency": "must exceed 15% in ALL 5 years — one bad year is a warning, two bad years is a reject"
+      },
+      "pass_example": "ROCE: 22%, 19%, 18%, 21%, 24% → PASS",
+      "fail_example": "ROCE: 22%, 19%, 11%, 21%, 24% → WARN (one year below 15%)",
+      "reject_example": "ROCE: 22%, 10%, 11%, 21%, 24% → REJECT (two or more years below 15%)",
+      "why_it_matters": "ROCE above 15% means the company earns more than its cost of capital. Consistently high ROCE signals a durable competitive advantage."
+    },
+    {
+      "id": "E1",
+      "name": "EPS — Earnings Per Share",
+      "full_form": "E = EPS",
+      "formula": "Net Profit After Tax / Total Shares Outstanding",
+      "lookup_on_screener": "Profit & Loss → EPS (Rs)",
+      "years_to_check": 5,
+      "threshold": {
+        "condition": "positive_or_positive_trend",
+        "detail": "EPS must be positive in all 5 years OR show a clear upward trend. If EPS is zero or negative in ANY single year out of 5 — REJECT immediately."
+      },
+      "hard_reject_rule": "EPS = 0 or EPS < 0 in any year → REJECT, no exceptions",
+      "pass_example": "EPS: 12, 14, 13, 17, 20 → PASS (positive trend, slight dip in year 3 is acceptable)",
+      "fail_example": "EPS: 12, 14, 0, 17, 20 → REJECT (zero EPS in year 3)",
+      "reject_example": "EPS: 12, 14, -3, 17, 20 → REJECT (negative EPS in year 3)",
+      "why_it_matters": "Zero or negative EPS means the company is not profitable. A positional investor cannot rely on a business that loses money even for a single year."
+    },
+    {
+      "id": "F",
+      "name": "FCF — Free Cash Flow",
+      "full_form": "F = FCF",
+      "formula": "Operating Cash Flow − Capital Expenditure",
+      "lookup_on_screener": "Cash Flow Statement → Cash from Operations − Capex (or use FCF directly if available)",
+      "years_to_check": 5,
+      "threshold": {
+        "condition": "positive_slope",
+        "detail": "FCF must show an increasing trend over 5 years. Minor year-on-year dips are acceptable if the overall slope is upward."
+      },
+      "hard_reject_rule": "If FCF is negative in 3 or more years out of 5 — REJECT",
+      "pass_example": "FCF (Cr): 200, 250, 230, 310, 400 → PASS (positive slope, one small dip acceptable)",
+      "warn_example": "FCF (Cr): 200, 250, -50, 310, 400 → WARN (one negative year — investigate reason, e.g. major capex cycle)",
+      "reject_example": "FCF (Cr): 200, -100, -150, 310, -200 → REJECT (3 negative years out of 5)",
+      "why_it_matters": "FCF shows actual cash generated after reinvestment. Consistently negative FCF means the company is burning cash and cannot self-fund growth."
+    },
+    {
+      "id": "I",
+      "name": "Interest Coverage Ratio",
+      "full_form": "I = Interest Coverage",
+      "formula": "PBIT / Interest Expense",
+      "where": "PBIT = Profit Before Interest and Tax",
+      "lookup_on_screener": "Profit & Loss → calculate as: (Net Profit + Tax + Interest) / Interest",
+      "years_to_check": 5,
+      "threshold": {
+        "condition": "higher_is_better",
+        "good_example": "PBIT = 100, Interest = 10 → Coverage = 10× (GOOD)",
+        "bad_example": "PBIT = 100, Interest = 150 → Coverage = 0.67× (BAD — company cannot service debt from operations)",
+        "minimum_acceptable": 3,
+        "preferred": "Above 5× consistently",
+        "danger_zone": "Below 1.5× in any year is a serious red flag"
+      },
+      "hard_reject_rule": "Interest Coverage below 1.0 in any year → REJECT (company cannot cover interest from profits)",
+      "pass_example": "Coverage: 8×, 10×, 9×, 12×, 15× → PASS",
+      "warn_example": "Coverage: 8×, 10×, 3×, 12×, 15× → WARN (one weak year — investigate debt spike or one-off)",
+      "reject_example": "Coverage: 8×, 10×, 0.8×, 12×, 15× → REJECT (below 1× means interest exceeds PBIT)",
+      "why_it_matters": "A low interest coverage ratio means a large portion of operating profit goes to lenders, leaving little for shareholders and growth."
+    },
+    {
+      "id": "N",
+      "name": "Net Margin",
+      "full_form": "N = Net Margin",
+      "formula": "Net Profit After Tax / Revenue × 100",
+      "lookup_on_screener": "Key Metrics → Net Profit % or calculate from P&L",
+      "years_to_check": 5,
+      "threshold": {
+        "method": "CAGR basis over 5 years",
+        "condition": "positive and growing",
+        "detail": "Net Margin must be positive in all 5 years AND the 5-year CAGR of Net Margin must be positive (i.e. margins are expanding, not shrinking)",
+        "cagr_formula": "((Net Margin Year 5 / Net Margin Year 1) ^ (1/4) - 1) × 100"
+      },
+      "pass_example": "Net Margin: 8%, 9%, 8.5%, 10%, 12% → PASS (positive CAGR ≈ +10.7%)",
+      "warn_example": "Net Margin: 12%, 11%, 10%, 9%, 8% → WARN (shrinking margins — negative CAGR)",
+      "reject_example": "Net Margin: 12%, 11%, -2%, 9%, 8% → REJECT (negative margin in one year)",
+      "why_it_matters": "Expanding net margins signal pricing power and cost discipline. Shrinking margins over 5 years mean competition or inflation is eroding profitability."
+    },
+    {
+      "id": "E2",
+      "name": "Economic Moat",
+      "full_form": "E = Economic Moats",
+      "description": "The company must have at least one identifiable and durable competitive advantage (moat) that protects its market position and profitability from competition.",
+      "years_to_check": "Qualitative — assess current business model",
+      "threshold": {
+        "condition": "at_least_one_moat_required",
+        "moats": [
+          {
+            "type": "Brand Loyalty",
+            "description": "Customers repeatedly choose this company's product over cheaper alternatives purely due to brand trust or perception.",
+            "examples": ["Asian Paints", "Nestle India", "Titan", "Marico"]
+          },
+          {
+            "type": "Cost of Shifting Products",
+            "description": "Customers face high switching costs (financial, technical, or operational) if they move to a competitor. Also called Switching Cost Moat.",
+            "examples": ["TCS (IT services contracts)", "HDFC Bank (core banking relationship)", "Tata Consultancy (enterprise software)"]
+          },
+          {
+            "type": "Cost Efficiency",
+            "description": "The company produces goods or services at a structurally lower cost than competitors due to scale, process, or location advantages, allowing it to undercut or earn higher margins.",
+            "examples": ["Reliance Industries (petrochemical scale)", "Coal India (captive resources)", "Ultratech Cement (logistics network)"]
+          },
+          {
+            "type": "Networking Advantage",
+            "description": "The product or service becomes more valuable as more users join the network, making it very hard for new entrants to displace. Also called Network Effect Moat.",
+            "examples": ["BSE / NSE (exchange liquidity)", "IndiaMART (buyer-seller marketplace)", "Info Edge (Naukri — recruiter-candidate network)"]
+          }
+        ]
+      },
+      "how_to_assess": [
+        "Read the company's latest annual report — Management Discussion section",
+        "Check if pricing power has been maintained over 5 years (prices raised without losing customers)",
+        "Check if market share has been stable or growing despite competitors entering",
+        "Look at ROCE trend — a high and stable ROCE (>15%) itself is evidence of a moat"
+      ],
+      "reject_rule": "If the company has no identifiable moat and operates in a pure commodity business with no differentiation — REJECT or downweight significantly",
+      "why_it_matters": "A moat determines whether today's high ROCE will persist. Without a moat, competition erodes margins and ROCE converges to average over time."
+    },
+    {
+      "id": "D",
+      "name": "Dividends",
+      "full_form": "D = Dividends",
+      "formula": "Dividend Per Share (DPS) paid per year",
+      "lookup_on_screener": "Key Metrics → Dividend Yield or Profit & Loss → Dividend Payout",
+      "years_to_check": 5,
+      "threshold": {
+        "condition": "positive in all 5 years",
+        "detail": "Dividend must be declared and paid in every single year of the last 5 years. Even one year with zero dividend is a reject signal."
+      },
+      "hard_reject_rule": "Dividend = 0 in any year out of 5 → REJECT",
+      "pass_example": "DPS (Rs): 5, 6, 6, 8, 10 → PASS",
+      "fail_example": "DPS (Rs): 5, 6, 0, 8, 10 → REJECT (zero dividend in year 3 — company withheld dividend, signals cash stress or management priority change)",
+      "note": "The absolute dividend amount does not need to grow every year, but it must never be zero. Growing dividends are a strong positive signal.",
+      "why_it_matters": "Consistent dividends signal that the company generates surplus cash reliably and that management respects shareholder returns. A dividend cut or skip is often an early warning of deteriorating business health."
+    }
+  ],
+  "scoring": {
+    "method": "Pass / Warn / Reject per criterion",
+    "overall_decision": {
+      "STRONG BUY":  "All 7 criteria PASS",
+      "BUY":         "6 criteria PASS, 1 WARN (no hard rejects)",
+      "WATCH":       "5 criteria PASS, 2 WARN (no hard rejects)",
+      "AVOID":       "Any hard REJECT triggered on E1 (EPS), D (Dividend), or I (Interest Coverage below 1×)",
+      "REJECT":      "Hard reject on FCF (3+ negative years) or ROCE (2+ years below 15%) or any single hard reject rule"
+    }
+  },
+  "checklist_order": [
+    "Step 1 — Check Stock Universe: Is the stock in Nifty 50 / Nifty 100 / Nifty 200 AND priced above ₹500?",
+    "Step 2 — Open Screener.in → Search stock → Switch to Consolidated view",
+    "Step 3 — R: Check ROCE for last 5 years. All above 15%?",
+    "Step 4 — E1: Check EPS for last 5 years. Any zero or negative? If yes → REJECT immediately",
+    "Step 5 — F: Check FCF for last 5 years. Positive slope? 3 or more negative years? If yes → REJECT",
+    "Step 6 — I: Calculate Interest Coverage (PBIT / Interest) for last 5 years. Any year below 1×? If yes → REJECT",
+    "Step 7 — N: Check Net Margin for last 5 years. Is the 5-year CAGR of Net Margin positive?",
+    "Step 8 — E2: Identify the company's economic moat. At least one of the 4 types must be clearly present",
+    "Step 9 — D: Check Dividends for last 5 years. Any year with zero dividend? If yes → REJECT",
+    "Step 10 — Score: Apply scoring rules and make final decision"
+  ],
+  "common_mistakes_to_avoid": [
+    "Never use Standalone figures — always use Consolidated on Screener",
+    "Do not skip the FCF check just because Net Profit is positive — a company can show profit but burn cash",
+    "Do not accept a stock just because it paid a large one-time special dividend — check regular annual dividends",
+    "Interest Coverage below 3× in a capital-intensive industry is a warning even if above 1×",
+    "Economic Moat is qualitative — do not skip it because all financial metrics look good",
+    "A stock priced below ₹500 is outside the universe — do not analyse it regardless of other factors"
+  ]
+}

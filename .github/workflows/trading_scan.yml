@@ -1,0 +1,94 @@
+name: Trading Fundamental Scan
+
+# Runs fundamental_check.sh (Screener.in-based, no TradingView dependency)
+# against every stock in approved_stocks.json, and pushes a Telegram alert
+# for any STRONG BUY / BUY (buy signal) or AVOID (sell/exit-worthy — a
+# previously-approved stock whose fundamentals have deteriorated). WATCH is
+# treated as "nothing actionable" and is not notified, matching the same
+# actionable-only notification policy used by master_scan.sh.
+#
+# Requires two repo secrets (Settings > Secrets and variables > Actions):
+#   TELEGRAM_BOT_TOKEN
+#   TELEGRAM_CHAT_ID
+# These are NOT hardcoded here on purpose — a workflow file is committed to
+# git history, and a bot token in that history is a permanent leak even if
+# later removed from the working copy.
+#
+# Schedule times are UTC; GitHub also doesn't guarantee exact-time execution
+# for `schedule` triggers (can run a few minutes late under load) — don't
+# expect this to fire at 09:15:00 IST to the second.
+
+on:
+  schedule:
+    - cron: '45 3 * * 1-5'   # 09:15 IST, Mon-Fri
+    - cron: '0 10 * * 1-5'   # 15:30 IST, Mon-Fri
+  workflow_dispatch: {}      # manual trigger, for testing without waiting on the cron
+
+jobs:
+  fundamental-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run fundamental scan on all approved stocks
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -e
+          chmod +x fundamental_check.sh notify.sh
+
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "::warning::TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID secret not set — signals will be logged but not pushed to Telegram."
+          fi
+
+          SYMBOLS=$(jq -r '.stocks[].symbol' approved_stocks.json)
+          TOTAL=$(echo "$SYMBOLS" | wc -l | tr -d ' ')
+          echo "Scanning $TOTAL approved stocks..."
+
+          IDX=0
+          for SYMBOL in $SYMBOLS; do
+            IDX=$((IDX + 1))
+            echo "::group::[$IDX/$TOTAL] $SYMBOL"
+            OUTPUT=$(./fundamental_check.sh "$SYMBOL" 2>&1) || true
+            echo "$OUTPUT"
+            echo "::endgroup::"
+
+            VERDICT_LINE=$(echo "$OUTPUT" | grep "FINAL VERDICT:" || true)
+
+            LABEL=""
+            if echo "$VERDICT_LINE" | grep -q "STRONG BUY"; then
+              LABEL="🟢 STRONG BUY"
+            elif echo "$VERDICT_LINE" | grep -q " BUY"; then
+              LABEL="🟢 BUY"
+            elif echo "$VERDICT_LINE" | grep -q "AVOID"; then
+              LABEL="🔴 AVOID"
+            fi
+            # WATCH (or anything else) => no label => not notified
+
+            if [ -n "$LABEL" ]; then
+              CLEAN_VERDICT=$(echo "$VERDICT_LINE" \
+                | sed -E 's/^[^:]*FINAL VERDICT:[[:space:]]*//' \
+                | sed -E 's/^[^A-Za-z]+//' \
+                | sed -E 's/[[:space:]]*║[[:space:]]*$//')
+              MSG="${LABEL} — ${SYMBOL}"$'\n'"Fundamental scan: ${CLEAN_VERDICT}"
+              echo "Notifying: $SYMBOL -> $LABEL"
+
+              if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+                RESPONSE=$(curl -s --max-time 10 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                  --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+                  --data-urlencode "text=${MSG}")
+                if ! echo "$RESPONSE" | grep -q '"ok":true'; then
+                  echo "::warning::Telegram send failed for $SYMBOL: $RESPONSE"
+                fi
+              fi
+            fi
+          done
+
+          echo "Scan complete."

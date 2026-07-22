@@ -1,0 +1,177 @@
+{
+  "strategies": [
+    {
+      "id": "sma_80",
+      "name": "SMA 80",
+      "type": "trend_following",
+      "indicator": { "type": "SMA", "period": 80 },
+      "style": "positional",
+      "hold_duration": "6-9 months",
+      "entry": "Buy when price crosses above SMA 80",
+      "exit": "Sell when price crosses below SMA 80",
+      "timeframe": "1D"
+    },
+    {
+      "id": "ema_80",
+      "name": "EMA 80",
+      "type": "trend_following",
+      "indicator": { "type": "EMA", "period": 80 },
+      "style": "positional",
+      "hold_duration": "6-9 months",
+      "entry": "Buy when price crosses above EMA 80",
+      "exit": "Sell when price crosses below EMA 80",
+      "timeframe": "1D"
+    },
+    {
+      "id": "sma_5",
+      "name": "SMA 5",
+      "type": "trend_following",
+      "indicator": { "type": "SMA", "period": 5 },
+      "style": "short_term",
+      "hold_duration": "10 days",
+      "entry": "Buy when price crosses above SMA 5",
+      "exit": "Sell when price crosses below SMA 5",
+      "timeframe": "1D"
+    },
+    {
+      "id": "sma_30",
+      "name": "SMA 30",
+      "type": "trend_following",
+      "indicator": { "type": "SMA", "period": 30 },
+      "style": "swing",
+      "hold_duration": "3 weeks",
+      "entry": "Buy when price crosses above SMA 30",
+      "exit": "Sell when price crosses below SMA 30",
+      "timeframe": "1D"
+    },
+    {
+      "id": "macd",
+      "name": "MACD 26-12-9",
+      "type": "momentum",
+      "indicator": { "type": "MACD", "fast": 12, "slow": 26, "signal": 9 },
+      "style": "swing",
+      "hold_duration": "1-1.5 months",
+      "entry": "Buy when MACD line crosses above signal line while both are below the zero line",
+      "exit": "Sell when MACD line crosses below signal line",
+      "timeframe": "1D"
+    },
+    {
+      "id": "rsi_14",
+      "name": "RSI 14",
+      "type": "momentum",
+      "indicator": { "type": "RSI", "period": 14 },
+      "style": "swing",
+      "hold_duration": "varies",
+      "entry": "Buy only when RSI crosses above 30 from below (oversold recovery)",
+      "exit": "Sell when RSI reaches overbought zone (above 70) or reverses",
+      "timeframe": "1D"
+    },
+    {
+      "id": "support_resistance",
+      "name": "Support and Resistance",
+      "type": "price_action",
+      "indicator": { "type": "manual_levels" },
+      "style": "intraday",
+      "hold_duration": "intraday",
+      "entry": "Buy at support levels with confirmation; sell short at resistance levels",
+      "exit": "Exit at next resistance (long) or next support (short), or at stop loss",
+      "timeframe": "5m-15m"
+    },
+    {
+      "id": "bollinger_bands",
+      "name": "Bollinger Bands 20-2",
+      "type": "volatility",
+      "indicator": { "type": "BB", "period": 20, "std_dev": 2 },
+      "style": "swing",
+      "hold_duration": "1-2 weeks",
+      "entry": "Buy when price touches or breaks below the lower band and reverses",
+      "exit": "Sell when price reaches the middle band (SMA 20) or upper band",
+      "timeframe": "1D"
+    },
+    {
+      "id": "dow_theory",
+      "name": "Dow Theory",
+      "type": "macro_trend",
+      "indicator": { "type": "price_structure" },
+      "style": "long_term",
+      "hold_duration": "5 years",
+      "universe": "indices_only",
+      "entry": "Buy when index confirms primary uptrend: higher highs and higher lows on weekly chart",
+      "exit": "Sell when index breaks primary uptrend with lower lows",
+      "timeframe": "1W"
+    },
+    {
+      "id": "bullish_engulfing",
+      "name": "Bullish Engulfing",
+      "type": "candlestick_pattern",
+      "indicator": { "type": "candlestick", "candles_required": 2 },
+      "style": "short_term",
+      "hold_duration": "5 days",
+      "pattern_description": "5-candle context: downtrend of 3-4 red candles followed by a large green candle that fully engulfs the previous red candle's body",
+      "entry": "Buy at close of the engulfing green candle",
+      "exit": "Sell after 5 days or at target/stop loss",
+      "timeframe": "1D"
+    },
+    {
+      "id": "bullish_harami",
+      "name": "Bullish Harami",
+      "type": "candlestick_pattern",
+      "indicator": { "type": "candlestick", "candles_required": 2 },
+      "style": "short_term",
+      "hold_duration": "5 days",
+      "confirmation_required": ["MACD", "MA", "RSI"],
+      "pattern_description": "Large red candle followed by a small green candle whose body is contained within the prior red candle's body",
+      "entry": "Buy only when confirmed by at least one of: MACD crossover, price above MA, RSI turning up from oversold",
+      "exit": "Sell after 5 days or at target/stop loss",
+      "timeframe": "1D"
+    },
+    {
+      "id": "morning_star",
+      "name": "Morning Star",
+      "type": "candlestick_pattern",
+      "indicator": { "type": "candlestick", "candles_required": 3 },
+      "style": "short_term",
+      "hold_duration": "5 days",
+      "pattern_description": "6-candle context: downtrend of 3 candles, then a large red candle, a small-bodied doji/spinning top (gap down), and a large green candle closing above midpoint of the first red candle",
+      "entry": "Buy at close of the third (green) candle",
+      "exit": "Sell after 5 days or at target/stop loss",
+      "timeframe": "1D"
+    },
+    {
+      "id": "piercing_pattern",
+      "name": "Piercing Pattern",
+      "type": "candlestick_pattern",
+      "indicator": { "type": "candlestick", "candles_required": 2 },
+      "style": "short_term",
+      "hold_duration": "5 days",
+      "pattern_description": "In a downtrend: a large red candle followed by a green candle that opens below the red candle's low and closes above the midpoint of the red candle's body",
+      "entry": "Buy at close of the green candle",
+      "exit": "Sell after 5 days or at target/stop loss",
+      "timeframe": "1D"
+    },
+    {
+      "id": "death_cross",
+      "name": "Death Cross",
+      "type": "moving_average_crossover",
+      "indicator": { "type": "crossover", "fast_ma": "SMA_50", "slow_ma": "SMA_200" },
+      "style": "positional",
+      "hold_duration": "varies",
+      "signal": "bearish",
+      "entry": "Sell / exit long positions when 50 DMA crosses below 200 DMA",
+      "exit": "Cover when Golden Cross forms",
+      "timeframe": "1D"
+    },
+    {
+      "id": "golden_cross",
+      "name": "Golden Cross",
+      "type": "moving_average_crossover",
+      "indicator": { "type": "crossover", "fast_ma": "SMA_50", "slow_ma": "SMA_200" },
+      "style": "positional",
+      "hold_duration": "varies",
+      "signal": "bullish",
+      "entry": "Buy when 50 DMA crosses above 200 DMA",
+      "exit": "Exit when Death Cross forms",
+      "timeframe": "1D"
+    }
+  ]
+}
