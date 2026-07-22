@@ -1,11 +1,18 @@
 name: Trading Fundamental Scan
 
 # Runs fundamental_check.sh (Screener.in-based, no TradingView dependency)
-# against every stock in approved_stocks.json, and pushes a Telegram alert
+# against a hardcoded list of approved stocks, and pushes a Telegram alert
 # for any STRONG BUY / BUY (buy signal) or AVOID (sell/exit-worthy — a
 # previously-approved stock whose fundamentals have deteriorated). WATCH is
 # treated as "nothing actionable" and is not notified, matching the same
 # actionable-only notification policy used by master_scan.sh.
+#
+# Why hardcoded instead of reading approved_stocks.json: that file is
+# gitignored (it's regenerated locally by weekly_fundamental_scan.sh and
+# treated as generated data, not source) — so it doesn't exist in the
+# checked-out repo on the runner. The APPROVED_STOCKS list below is a
+# snapshot; update it by hand whenever weekly_fundamental_scan.sh materially
+# changes the local approved list (added/removed stocks), then commit.
 #
 # Requires two repo secrets (Settings > Secrets and variables > Actions):
 #   TELEGRAM_BOT_TOKEN
@@ -40,6 +47,13 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # Snapshot of approved_stocks.json as of 2026-07-22 (25 stocks).
+          # approved_stocks.json itself is gitignored — see note above.
+          APPROVED_STOCKS: >-
+            ASIANPAINT BAJFINANCE BRITANNIA CIPLA COALINDIA DIVISLAB
+            EICHERMOT HCLTECH HDFCBANK HEROMOTOCO HINDUNILVR ICICIBANK
+            ITC INFY NESTLEIND SUNPHARMA TCS WIPRO COLPAL HAL MARICO
+            MUTHOOTFIN RECLTD TORNTPHARM AUBANK
         run: |
           set -e
           chmod +x fundamental_check.sh notify.sh
@@ -48,8 +62,8 @@ jobs:
             echo "::warning::TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID secret not set — signals will be logged but not pushed to Telegram."
           fi
 
-          SYMBOLS=$(jq -r '.stocks[].symbol' approved_stocks.json)
-          TOTAL=$(echo "$SYMBOLS" | wc -l | tr -d ' ')
+          SYMBOLS="$APPROVED_STOCKS"
+          TOTAL=$(echo "$SYMBOLS" | wc -w | tr -d ' ')
           echo "Scanning $TOTAL approved stocks..."
 
           IDX=0
