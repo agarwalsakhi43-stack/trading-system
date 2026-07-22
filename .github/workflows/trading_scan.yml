@@ -95,11 +95,19 @@ jobs:
               echo "Notifying: $SYMBOL -> $LABEL"
 
               if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-                RESPONSE=$(curl -s --max-time 10 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                # Guarded with if/then so a curl failure (bad secret, network
+                # blip, malformed URL — curl exit 3, etc.) can't trip `set -e`
+                # and abort the whole job. One failed send should just warn
+                # and let the loop continue to the next stock.
+                if RESPONSE=$(curl -sS --max-time 10 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
                   --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-                  --data-urlencode "text=${MSG}")
-                if ! echo "$RESPONSE" | grep -q '"ok":true'; then
-                  echo "::warning::Telegram send failed for $SYMBOL: $RESPONSE"
+                  --data-urlencode "text=${MSG}" 2>&1); then
+                  if ! echo "$RESPONSE" | grep -q '"ok":true'; then
+                    echo "::warning::Telegram API rejected the message for $SYMBOL: $RESPONSE"
+                  fi
+                else
+                  CURL_EXIT=$?
+                  echo "::warning::curl failed sending Telegram message for $SYMBOL (exit $CURL_EXIT): $RESPONSE"
                 fi
               fi
             fi
