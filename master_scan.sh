@@ -8,30 +8,43 @@
 #   ./master_scan.sh --mode weekly    # Saturday — Long-term Dow Theory
 #
 # Strategy preferences (per strategy_selector.md, based on 2-year backtest —
-# see backtest.sh / backtest_results.txt):
+# see backtest.sh / backtest_results.txt / backtest_full_results.txt):
+#
+# PRIORITY 1 — stock_strategy_map.json (per-stock override, checked first):
+#   From the comprehensive 12-strategy x 25-stock backtest. Each approved
+#   stock maps to its single best-backtested strategy. Only entries with
+#   confidence:"high" (>=4 trades in the backtest window) are actually wired
+#   to live signals below — confidence:"low" entries (<=3 trades) are treated
+#   as noise and fall through to Priority 2, same as an unmapped stock would.
+#   This SUPERSEDES the older single-stock ASIANPAINT-Bollinger-Breakout
+#   override (+20.1%, one data point) — the fuller 25-stock test found SMA 30
+#   works even better for ASIANPAINT (+29.5%, n=12) and is what's mapped now.
+#   Also worth noting: Bullish Harami previously looked like "no real edge"
+#   across a 6-stock subset and was pulled from strategy_selector.md's active
+#   list — but the fuller 25-stock test found it's the *best* strategy for
+#   HAL (+16.8%, n=20) and RECLTD (+13.1%, n=14). Both findings are true
+#   simultaneously: no general edge, but real edge for those two specific
+#   stocks — exactly the kind of thing a per-stock map (not a blanket rule)
+#   is supposed to capture. It's back in play for those two stocks only.
+#
+# PRIORITY 2 — sector-based fallback (unmapped or low-confidence stocks):
 #   - EMA 80 is used instead of SMA 80 for the core positional trend filter
 #     (beat SMA 80 on RELIANCE +5.7% vs +2.2% and INFY -20.3% vs -21.8%)
 #   - FMCG / Consumer sector stocks use a MACD signal-line crossover as the
 #     PRIMARY morning-mode strategy instead of the EMA80 cross (NESTLEIND
 #     backtest: MACD +22.7%/55.6% win rate vs EMA80 -11.1%). Sector is looked
-#     up from approved_stocks.json. NOTE: this override is based on a single
-#     FMCG data point (NESTLEIND) — treat as a strong lead, not settled fact.
-#   - RSI(14) > 30 is now REQUIRED alongside the MACD entry for FMCG/Consumer
+#     up from approved_stocks.json.
+#   - RSI(14) > 30 is REQUIRED alongside the MACD entry for FMCG/Consumer
 #     (both the fresh-cross and positional branches). Added because RSI 14 run
-#     standalone was the single best strategy in the same backtest round
+#     standalone was the single best strategy in an earlier backtest round
 #     (+37.6% / 50% win rate on NESTLEIND, beating MACD's +22.7% alone).
-#   - ASIANPAINT (and only ASIANPAINT so far — see BOLLINGER_PREFERRED below)
-#     uses a Bollinger Breakout instead of MACD: buy above the upper band,
-#     sell at the middle band. Backtest: +20.1% vs RSI-confirmed MACD's ~+15%.
-#     Single-stock evidence — expand the list only after backtesting more
-#     "trending" Consumer names, don't assume this generalizes.
-#   - Bullish Harami, Morning Star, and Piercing Pattern were backtested this
-#     round too but were NEVER implemented in this script's evening-mode
-#     candlestick logic (which only ever used Hammer/Bullish Engulfing/Swing
-#     Reclaim) — noted here only so nobody adds them later without checking:
-#     Bullish Harami showed no real edge even with confirmation (removed from
-#     strategy_selector.md); Morning Star / Piercing Pattern had too few
-#     trades (0-4 per stock) to trust either way.
+#
+# Morning Star and Piercing Pattern remain excluded from live signals even
+# where mapped as "best" — both are candlestick patterns whose backtested
+# exit (5-day hold / target / stop) requires tracking entry date and price,
+# which this stateless daily scanner doesn't do. Bullish Engulfing and
+# Bullish Harami are BUY-only here for the same reason (matches the existing
+# evening-mode candlestick signals, which have never had a SELL side either).
 #
 # Signals (morning mode only — the only mode with a documented symmetric
 # entry/exit rule in strategy_selector.md):
@@ -54,7 +67,8 @@ export TV_CLI="$SCRIPT_DIR/tradingview-mcp-jackson/src/cli/index.js"
 NOTIFY="$SCRIPT_DIR/notify.sh"
 NOTIFY_TG="$SCRIPT_DIR/notify_telegram.sh"
 APPROVED_FILE="$SCRIPT_DIR/approved_stocks.json"
-export APPROVED_FILE
+STOCK_STRATEGY_MAP_FILE="$SCRIPT_DIR/stock_strategy_map.json"
+export APPROVED_FILE STOCK_STRATEGY_MAP_FILE
 
 # Fire both notification channels for one event. Never let a Telegram
 # failure block the Mac notification or vice versa.
@@ -145,6 +159,7 @@ const TV_CLI       = process.env.TV_CLI;
 const symbol       = process.env.TECH_SYMBOL;
 const stockSymbol  = process.env.TECH_STOCK;
 const approvedFile = process.env.APPROVED_FILE;
+const mapFile      = process.env.STOCK_STRATEGY_MAP_FILE;
 const mode         = process.env.SCAN_MODE || 'morning';
 
 // ── Sector lookup (for FMCG/Consumer → MACD override) ──────────
@@ -155,6 +170,14 @@ try {
   if (match?.sector) sector = match.sector;
 } catch { /* approved_stocks.json missing or unreadable — default to Unknown */ }
 const isFmcgConsumer = /fmcg|consumer/i.test(sector);
+
+// ── Per-stock strategy map (Priority 1 — see header note) ──────
+let mapped = null;
+try {
+  const map = JSON.parse(readFileSync(mapFile, 'utf8'));
+  const entry = map.stocks?.[stockSymbol];
+  if (entry && entry.confidence === 'high') mapped = entry;
+} catch { /* stock_strategy_map.json missing or unreadable — fall through to sector logic */ }
 
 function run(cmd) {
   try { return JSON.parse(execSync(`node "${TV_CLI}" ${cmd}`, { timeout: 15000 }).toString()); }
@@ -242,6 +265,51 @@ const prevMacdSignal   = macdSignalSeries.at(-2);
 const swingLow30 = Math.min(...bars.slice(-30).map(b => b.low));
 const prevClose  = closes.at(-2);
 
+// ── Generic SMA(period) — for map-driven sma_5/sma_30/sma_80 overrides ─
+const smaOf = (arr, p) => (arr.length >= p ? arr.slice(-p).reduce((a, b) => a + b, 0) / p : null);
+const smaCurrent = p => smaOf(closes, p);
+const smaPrev    = p => smaOf(closes.slice(0, -1), p);
+
+// ── Bollinger Bands 20-2 (mean-reversion — the rule documented in
+// strategies.json) — for map-driven bollinger_bands overrides ─────────
+function bollingerOf(arr) {
+  const period = 20, mult = 2;
+  if (arr.length < period) return null;
+  const slice = arr.slice(-period);
+  const mean = slice.reduce((a, b) => a + b, 0) / period;
+  const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+  const sd = Math.sqrt(variance);
+  return { middle: mean, upper: mean + mult * sd, lower: mean - mult * sd };
+}
+const bbNow  = bollingerOf(closes);
+const bbPrev = bollingerOf(closes.slice(0, -1));
+
+// ── Candlestick pattern detectors (today vs prior bars) — for map-driven
+// bullish_engulfing / bullish_harami overrides. Ported from the detectors
+// in backtest.sh; BUY-only here (see header note on why there is no SELL side).
+const isRedBar   = b => b.close < b.open;
+const isGreenBar = b => b.close > b.open;
+const barBody    = b => Math.abs(b.close - b.open);
+
+function detectBullishEngulfingLive() {
+  if (n < 5) return false;
+  const c = bars.at(-1), p = bars.at(-2);
+  const downtrend = bars.at(-5).close > p.close;
+  const engulfs = isRedBar(p) && isGreenBar(c) && c.open <= p.close && c.close >= p.open && barBody(c) > barBody(p);
+  return downtrend && engulfs;
+}
+
+function detectBullishHaramiLive() {
+  if (n < 2) return false;
+  const c = bars.at(-1), p = bars.at(-2);
+  const contained = isRedBar(p) && isGreenBar(c) && c.open >= p.close && c.close <= p.open;
+  if (!contained) return false;
+  const macdConfirm = macd != null && prevMacd != null && macd > prevMacd;
+  const maConfirm    = ema80 != null && price > ema80;
+  const rsiConfirm    = prevRsi < 30 && rsi >= 30;
+  return macdConfirm || maConfirm || rsiConfirm;
+}
+
 let signal = 'NONE', strategy = '', target = 0, stop = 0, hold = '', reason = '';
 
 // ══════════════════════════════════════════════════════════════
@@ -249,27 +317,91 @@ let signal = 'NONE', strategy = '', target = 0, stop = 0, hold = '', reason = ''
 // ══════════════════════════════════════════════════════════════
 if (mode === 'morning') {
 
-  if (isFmcgConsumer && macdSignal != null && prevMacdSignal != null) {
-    // ── Sector override: FMCG/Consumer → MACD signal-line crossover ──
+  if (mapped) {
+    // ── Priority 1: per-stock backtested override — see header note ──
+    const tag = `${mapped.strategy_name} (mapped: ${mapped.backtest_return} over ${mapped.trades} trades)`;
+
+    if (mapped.strategy_id === 'sma_5' || mapped.strategy_id === 'sma_30' || mapped.strategy_id === 'sma_80') {
+      const period = mapped.strategy_id === 'sma_5' ? 5 : mapped.strategy_id === 'sma_30' ? 30 : 80;
+      const smaNow = smaCurrent(period), smaPrevV = smaPrev(period);
+      if (smaNow != null && smaPrevV != null && prevClose < smaPrevV && price >= smaNow) {
+        signal = 'BUY'; strategy = `${mapped.strategy_name} Cross (mapped)`;
+        target = price * 1.10; stop = smaNow; hold = 'Per backtest';
+        reason = `Price crossed above ${mapped.strategy_name} ₹${smaNow.toFixed(1)} · ${tag}`;
+      } else if (smaNow != null && smaPrevV != null && prevClose >= smaPrevV && price < smaNow) {
+        signal = 'SELL'; strategy = `${mapped.strategy_name} Cross Down`;
+        stop = smaNow; hold = 'Exit position';
+        reason = `Price crossed below ${mapped.strategy_name} ₹${smaNow.toFixed(1)} — mapped exit rule`;
+      }
+
+    } else if (mapped.strategy_id === 'macd' && macdSignal != null && prevMacdSignal != null) {
+      if (prevMacd <= prevMacdSignal && macd > macdSignal) {
+        signal = 'BUY'; strategy = `MACD Cross (mapped)`;
+        target = price * 1.10; stop = ema80 || price * 0.95; hold = 'Per backtest';
+        reason = `MACD crossed above signal · ${tag}`;
+      } else if (prevMacd >= prevMacdSignal && macd < macdSignal) {
+        signal = 'SELL'; strategy = 'MACD Cross Down';
+        hold = 'Exit position';
+        reason = `MACD crossed below signal line — mapped exit rule`;
+      }
+
+    } else if (mapped.strategy_id === 'rsi_14') {
+      if (prevRsi <= 30 && rsi > 30) {
+        signal = 'BUY'; strategy = `RSI 14 Recovery (mapped)`;
+        target = price * 1.10; stop = price * 0.95; hold = 'Per backtest';
+        reason = `RSI crossed above 30 from oversold (${rsi.toFixed(1)}) · ${tag}`;
+      } else if ((prevRsi < 70 && rsi >= 70) || (prevRsi >= 30 && rsi < 30)) {
+        signal = 'SELL'; strategy = 'RSI 14 Exit';
+        hold = 'Exit position';
+        reason = `RSI ${rsi >= 70 ? 'reached overbought (≥70)' : 'reversed back below 30'} — mapped exit rule`;
+      }
+
+    } else if (mapped.strategy_id === 'bollinger_bands' && bbNow && bbPrev) {
+      if (prevClose <= bbPrev.lower && price > prevClose) {
+        signal = 'BUY'; strategy = `Bollinger Mean-Reversion (mapped)`;
+        target = bbNow.middle; stop = bbNow.lower; hold = 'Per backtest';
+        reason = `Touched lower band ₹${bbPrev.lower.toFixed(1)} and reversed · ${tag}`;
+      } else if (prevClose > bbPrev.middle && price <= bbNow.middle) {
+        signal = 'SELL'; strategy = 'Bollinger Middle-Band Exit';
+        hold = 'Exit position';
+        reason = `Price fell back to middle band ₹${bbNow.middle.toFixed(1)} — mapped exit rule`;
+      }
+
+    } else if (mapped.strategy_id === 'bullish_engulfing' && detectBullishEngulfingLive()) {
+      signal = 'BUY'; strategy = `Bullish Engulfing (mapped)`;
+      target = price * 1.05; stop = bars.at(-2).low; hold = '5 days (per strategy_selector.md)';
+      reason = `Bullish engulfing candle confirmed · ${tag} — no SELL side (see header note)`;
+
+    } else if (mapped.strategy_id === 'bullish_harami' && detectBullishHaramiLive()) {
+      signal = 'BUY'; strategy = `Bullish Harami (mapped)`;
+      target = price * 1.05; stop = bars.at(-2).low; hold = '5 days (per strategy_selector.md)';
+      reason = `Bullish harami confirmed (MACD/EMA80/RSI) · ${tag} — no SELL side (see header note)`;
+    }
+    // else: no entry/exit condition fired today for the mapped strategy — WAIT,
+    // deliberately not falling through to sector logic (the map is Priority 1)
+
+  } else if (isFmcgConsumer && macdSignal != null && prevMacdSignal != null) {
+    // ── Priority 2a: Sector fallback — FMCG/Consumer → MACD signal-line crossover ──
     // (2yr backtest: NESTLEIND MACD +22.7%/55.6% win rate vs EMA80 -11.1% —
     // see strategy_selector.md Sector Override. Based on one FMCG data point.)
     const macdCrossAbove = prevMacd <= prevMacdSignal && macd > macdSignal;
     const belowZero      = macd < 0 && macdSignal < 0;
+    const rsiConfirm      = rsi > 30; // per strategy_selector.md — RSI recovery confirmation
 
-    if (macdCrossAbove && belowZero) {
+    if (macdCrossAbove && belowZero && rsiConfirm) {
       signal   = 'BUY';
       strategy = 'MACD Cross (FMCG/Consumer)';
       target   = price * 1.10;
       stop     = ema80 || price * 0.95;
       hold     = '1-1.5 months';
-      reason   = `MACD crossed above signal while both below zero · sector: ${sector}`;
-    } else if (macd > 0 && macd >= prevMacd && ema80 && price > ema80 && rsi < 75) {
+      reason   = `MACD crossed above signal while both below zero · RSI ${rsi.toFixed(1)}>30 confirmed · sector: ${sector}`;
+    } else if (macd > 0 && macd >= prevMacd && ema80 && price > ema80 && rsi < 75 && rsiConfirm) {
       signal   = 'BUY';
       strategy = 'MACD Positional (FMCG/Consumer)';
       target   = price * 1.10;
       stop     = ema80;
       hold     = '1-1.5 months';
-      reason   = `MACD positive & rising above EMA80 ₹${ema80.toFixed(1)} · sector: ${sector}`;
+      reason   = `MACD positive & rising above EMA80 ₹${ema80.toFixed(1)} · RSI ${rsi.toFixed(1)} confirmed · sector: ${sector}`;
 
     // Exit rule (strategies.json "macd"): sell when MACD crosses below signal
     } else if (prevMacd >= prevMacdSignal && macd < macdSignal) {
@@ -406,6 +538,7 @@ if (signal === 'BUY' || signal === 'SELL') {
   console.log(`  Reason   : ${reason}`);
 }
 if (ema80) console.log(`  EMA80    : ₹${ema80.toFixed(1)}   RSI: ${rsi.toFixed(1)}   MACD: ${macd?.toFixed(2) ?? 'N/A'}   Sector: ${sector}${isFmcgConsumer ? ' (MACD-preferred)' : ''}`);
+console.log(`  Routing  : ${mapped ? `mapped → ${mapped.strategy_name} (${mapped.backtest_return}, n=${mapped.trades})` : 'sector-based fallback (no high-confidence map entry)'}`);
 console.log(`  ${dl}`);
 
 process.stdout.write([

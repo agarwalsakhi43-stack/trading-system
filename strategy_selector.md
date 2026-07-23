@@ -2,6 +2,16 @@
 
 Use this guide to decide which strategy to apply to any stock or index before taking a trade.
 
+**Note on live automation**: `master_scan.sh` now checks `stock_strategy_map.json` first —
+each approved stock's individually best-backtested strategy (from the 12-strategy x 25-stock
+comprehensive backtest, see `backtest_full_results.txt`), used only where the backtest had
+enough trades (>=4) to trust. Everything below is the fallback logic for unmapped or
+low-confidence stocks, and the general reference for picking a strategy manually. One finding
+worth knowing: Bullish Harami showed no general edge in an earlier smaller test (noted further
+down as "removed"), but the fuller test found real edge for it specifically on HAL and RECLTD —
+both are true at once, which is exactly why the per-stock map exists alongside this guide rather
+than replacing it.
+
 ---
 
 ## Step 1 — Identify the Instrument

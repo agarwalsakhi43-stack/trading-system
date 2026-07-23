@@ -1,0 +1,183 @@
+{
+  "_comment": "Best-backtested strategy per approved stock, from the 12-strategy x 25-stock 2yr comprehensive backtest (see backtest_full_results.txt). confidence:'low' means the winning strategy had <=4 trades in the backtest window -- not enough sample size to trust over the generic sector-based selector, so master_scan.sh falls back to the default (EMA80/MACD) logic for those stocks despite a mapped entry existing here.",
+  "generatedFrom": "backtest_full_results.txt",
+  "generatedOn": "2026-07-23",
+  "backtestWindow": "2024-07-23 to 2026-07-23 (2y daily bars, Yahoo Finance)",
+  "stocks": {
+    "ASIANPAINT": {
+      "strategy_id": "sma_30",
+      "strategy_name": "SMA 30",
+      "backtest_return": "+29.5%",
+      "trades": 12,
+      "confidence": "high"
+    },
+    "BAJFINANCE": {
+      "strategy_id": "rsi_14",
+      "strategy_name": "RSI 14",
+      "backtest_return": "+29.5%",
+      "trades": 3,
+      "confidence": "low"
+    },
+    "BRITANNIA": {
+      "strategy_id": "macd",
+      "strategy_name": "MACD 26-12-9",
+      "backtest_return": "+15.9%",
+      "trades": 7,
+      "confidence": "high"
+    },
+    "CIPLA": {
+      "strategy_id": "morning_star",
+      "strategy_name": "Morning Star",
+      "backtest_return": "+3.8%",
+      "trades": 2,
+      "confidence": "low"
+    },
+    "COALINDIA": {
+      "strategy_id": "piercing_pattern",
+      "strategy_name": "Piercing Pattern",
+      "backtest_return": "+8.1%",
+      "trades": 2,
+      "confidence": "low"
+    },
+    "DIVISLAB": {
+      "strategy_id": "sma_5",
+      "strategy_name": "SMA 5",
+      "backtest_return": "+39.0%",
+      "trades": 59,
+      "confidence": "high"
+    },
+    "EICHERMOT": {
+      "strategy_id": "sma_5",
+      "strategy_name": "SMA 5",
+      "backtest_return": "+32.6%",
+      "trades": 67,
+      "confidence": "high"
+    },
+    "HCLTECH": {
+      "strategy_id": "bullish_engulfing",
+      "strategy_name": "Bullish Engulfing",
+      "backtest_return": "+5.4%",
+      "trades": 18,
+      "confidence": "high"
+    },
+    "HDFCBANK": {
+      "strategy_id": "rsi_14",
+      "strategy_name": "RSI 14",
+      "backtest_return": "+7.9%",
+      "trades": 8,
+      "confidence": "high"
+    },
+    "HEROMOTOCO": {
+      "strategy_id": "sma_80",
+      "strategy_name": "SMA 80",
+      "backtest_return": "+29.4%",
+      "trades": 8,
+      "confidence": "high"
+    },
+    "HINDUNILVR": {
+      "strategy_id": "morning_star",
+      "strategy_name": "Morning Star",
+      "backtest_return": "+2.8%",
+      "trades": 1,
+      "confidence": "low"
+    },
+    "ICICIBANK": {
+      "strategy_id": "rsi_14",
+      "strategy_name": "RSI 14",
+      "backtest_return": "+27.0%",
+      "trades": 6,
+      "confidence": "high"
+    },
+    "ITC": {
+      "strategy_id": "bollinger_bands",
+      "strategy_name": "Bollinger Bands 20-2",
+      "backtest_return": "+11.2%",
+      "trades": 7,
+      "confidence": "high"
+    },
+    "INFY": {
+      "strategy_id": "bullish_engulfing",
+      "strategy_name": "Bullish Engulfing",
+      "backtest_return": "+13.1%",
+      "trades": 10,
+      "confidence": "high"
+    },
+    "NESTLEIND": {
+      "strategy_id": "rsi_14",
+      "strategy_name": "RSI 14",
+      "backtest_return": "+29.8%",
+      "trades": 7,
+      "confidence": "high"
+    },
+    "SUNPHARMA": {
+      "strategy_id": "rsi_14",
+      "strategy_name": "RSI 14",
+      "backtest_return": "+12.6%",
+      "trades": 4,
+      "confidence": "high"
+    },
+    "TCS": {
+      "strategy_id": "morning_star",
+      "strategy_name": "Morning Star",
+      "backtest_return": "+4.9%",
+      "trades": 2,
+      "confidence": "low"
+    },
+    "WIPRO": {
+      "strategy_id": "piercing_pattern",
+      "strategy_name": "Piercing Pattern",
+      "backtest_return": "+5.0%",
+      "trades": 1,
+      "confidence": "low"
+    },
+    "COLPAL": {
+      "strategy_id": "bullish_engulfing",
+      "strategy_name": "Bullish Engulfing",
+      "backtest_return": "+21.8%",
+      "trades": 12,
+      "confidence": "high"
+    },
+    "HAL": {
+      "strategy_id": "bullish_harami",
+      "strategy_name": "Bullish Harami",
+      "backtest_return": "+16.8%",
+      "trades": 20,
+      "confidence": "high"
+    },
+    "MARICO": {
+      "strategy_id": "macd",
+      "strategy_name": "MACD 26-12-9",
+      "backtest_return": "+37.2%",
+      "trades": 8,
+      "confidence": "high"
+    },
+    "MUTHOOTFIN": {
+      "strategy_id": "bollinger_bands",
+      "strategy_name": "Bollinger Bands 20-2",
+      "backtest_return": "+46.3%",
+      "trades": 11,
+      "confidence": "high"
+    },
+    "RECLTD": {
+      "strategy_id": "bullish_harami",
+      "strategy_name": "Bullish Harami",
+      "backtest_return": "+13.1%",
+      "trades": 14,
+      "confidence": "high"
+    },
+    "TORNTPHARM": {
+      "strategy_id": "macd",
+      "strategy_name": "MACD 26-12-9",
+      "backtest_return": "+22.5%",
+      "trades": 7,
+      "confidence": "high"
+    },
+    "AUBANK": {
+      "strategy_id": "sma_30",
+      "strategy_name": "SMA 30",
+      "backtest_return": "+68.3%",
+      "trades": 13,
+      "confidence": "high"
+    }
+  }
+}
