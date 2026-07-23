@@ -58,6 +58,18 @@ jobs:
           set -e
           chmod +x fundamental_check.sh notify.sh
 
+          # Defensively strip ALL whitespace (spaces, tabs, trailing newlines)
+          # from the secrets. A bot token/chat_id should never legitimately
+          # contain whitespace — but a stray trailing newline from however the
+          # secret was pasted into GitHub's UI is a common, invisible artifact
+          # that breaks the token when it's embedded in the URL path (Telegram's
+          # Bot API requires /bot<TOKEN>/METHOD in the path — there's no way to
+          # move the token into -d instead, so it must be clean going in).
+          # Reproduced locally: a trailing newline in the token gives curl's
+          # exact "URL rejected: Malformed input to a URL function" (exit 3).
+          TELEGRAM_BOT_TOKEN=$(printf '%s' "$TELEGRAM_BOT_TOKEN" | tr -d '[:space:]')
+          TELEGRAM_CHAT_ID=$(printf '%s' "$TELEGRAM_CHAT_ID" | tr -d '[:space:]')
+
           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
             echo "::warning::TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID secret not set — signals will be logged but not pushed to Telegram."
           fi
